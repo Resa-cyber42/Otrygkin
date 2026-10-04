@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Турнир Отрышкин</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Arial', sans-serif;
+            background-color: #1a1a1a;
+            color: white;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364);
+        }
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+        .screen.active {
+            display: flex;
+        }
+        h1 {
+            font-size: 5rem;
+            text-shadow: 0 0 20px #ffaa00, 0 0 40px #ff5500;
+            margin-bottom: 0.5rem;
+            letter-spacing: 5px;
+            color: #fff3b0;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            color: #a0d8ff;
+            text-shadow: 0 0 10px #0088ff;
+        }
+        button {
+            background: linear-gradient(45deg, #1e3c72, #2a5298);
+            border: 2px solid #ffaa00;
+            color: white;
+            padding: 15px 40px;
+            margin: 10px;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 0 15px rgba(255, 170, 0, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
+        button:hover {
+            background: linear-gradient(45deg, #2a5298, #1e3c72);
+            box-shadow: 0 0 30px #ffaa00;
+            transform: scale(1.05);
+            color: #ffd966;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .difficulty-buttons, .character-buttons {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .difficulty-btn, .char-btn {
+            padding: 20px 30px;
+            font-size: 1.3rem;
+            border-radius: 20px;
+            min-width: 180px;
+        }
+        .easy { background: linear-gradient(45deg, #00b09b, #96c93d); }
+        .medium { background: linear-gradient(45deg, #f2994a, #f2c94c); color: #222; }
+        .hard { background: linear-gradient(45deg, #cb2d3e, #ef473a); }
+        .char-btn {
+            background: linear-gradient(45deg, #3a1c71, #d76d77);
+        }
+        .char-btn.selected {
+            border: 4px solid #ffaa00;
+            box-shadow: 0 0 30px #ffaa00;
+            transform: scale(1.1);
+        }
+        .back-btn {
+            background: linear-gradient(45deg, #333, #555);
+            border-color: #888;
+            padding: 10px 30px;
+            font-size: 1.2rem;
+            margin-top: 30px;
+        }
+        .settings-panel {
+            background: rgba(20, 30, 50, 0.9);
+            padding: 40px;
+            border-radius: 30px;
+            border: 2px solid #00aaff;
+            box-shadow: 0 0 30px #00aaff;
+            text-align: center;
+        }
+        .settings-panel label {
+            display: block;
+            margin: 15px 0;
+            font-size: 1.3rem;
+            color: #a0d8ff;
+        }
+        .settings-panel input[type="range"] {
+            width: 300px;
+            margin-left: 20px;
+        }
+        .volume-value {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        .game-ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .game-ui > * {
+            pointer-events: auto;
+        }
+        .player-info {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 15px;
+            border: 2px solid #ffaa00;
+            font-size: 1.2rem;
+        }
+        .turn-indicator {
+            font-size: 1.5rem;
+            color: #ffd966;
+            text-shadow: 0 0 10px #ffaa00;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px 30px;
+            border-radius: 30px;
+            border: 2px solid #00aaff;
+        }
+        .game-message {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2rem;
+            color: #ffaa00;
+            text-shadow: 0 0 20px #ff5500;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 40px;
+            border-radius: 30px;
+            border: 3px solid #ffaa00;
+            z-index: 20;
+            display: none;
+            text-align: center;
+        }
+        .game-message.show {
+            display: block;
+            animation: pop 0.3s ease;
+        }
+        @keyframes pop {
+            0% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+            100% { transform: translateX(-50%) scale(1); opacity: 1; }
+        }
+        .power-bar-container {
+            position: absolute;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 800px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 30px;
+            border: 3px solid #555;
+            overflow: hidden;
+            z-index: 15;
+        }
+        .power-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
+            transition: width 0.05s linear;
+            border-radius: 30px;
+        }
+        .power-bar-marker {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 4px;
+            background: white;
+            box-shadow: 0 0 10px white;
+            transition: left 0.05s linear;
+        }
+        .green-zone {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background: rgba(0, 255, 0, 0.3);
+            border-left: 2px dashed #00ff00;
+            border-right: 2px dashed #00ff00;
+            pointer-events: none;
+        }
+        .zone-label {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff00;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            text-shadow: 0 0 5px #000;
+        }
+        .restart-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 30;
+            padding: 10px 25px;
+            font-size: 1rem;
+        }
+        .hint {
+            color: #aaa;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+        .fart-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 8rem;
+            opacity: 0;
+            z-index: 25;
+            pointer-events: none;
+        }
+        .fart-display.show {
+            animation: fartAnim 1s ease-out;
+        }
+        @keyframes fartAnim {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.5); }
+            50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.5); }
+        }
+        .volume-icon {
+            font-size: 1.5rem;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Главное меню -->
+        <div id="mainMenu" class="screen active">
+            <h1>Турнир Отрышкин</h1>
+            <div class="subtitle">Соревнование по отрыжке</div>
+            <button onclick="showScreen('soloDifficulty')">🎮 Играть в соло</button>
+            <button onclick="showScreen('multiCharacter')">👥 Играть с друзьями</button>
+            <button onclick="showScreen('settings')">⚙️ Настройки</button>
+        </div>
+
+        <!-- Настройки -->
+        <div id="settings" class="screen">
+            <div class="settings-panel">
+                <h2>⚙️ Настройки</h2>
+                <label>
+                    <span class="volume-icon">🔊</span> Громкость музыки:
+                    <input type="range" id="musicVolume" min="0" max="100" value="50">
+                    <span class="volume-value" id="musicVolValue">50%</span>
+                </label>
+                <label>
+                    <span class="volume-icon">💨</span> Громкость отрыжки:
+                    <input type="range" id="fartVolume" min="0" max="100" value="70">
+                    <span class="volume-value" id="fartVolValue">70%</span>
+                </label>
+                <button class="back-btn" onclick="showScreen('mainMenu')">Назад</button>
+            </div>
+        </div>
+
+        <!-- Выбор сложности (соло) -->
+        <div id="soloDifficulty" class="screen">
+            <h2>Выберите сложность</h2>
+            <div class="difficulty-buttons">
+                <button class="difficulty-btn easy" onclick="selectDifficulty('easy')">😊 Лёгкий</button>
+                <button class="difficulty-btn medium" onclick="selectDifficulty('medium')">😐 Простой</button>
+                <button class="difficulty-btn hard" onclick="selectDifficulty('hard')">😈 Сложный</button>
+            </div>
+            <button class="back-btn" onclick="showScreen('mainMenu')">Назад</button>
+        </div>
+
+        <!-- Выбор персонажа (соло) -->
+        <div id="soloCharacter" class="screen">
+            <h2>Выберите персонажа</h2>
+            <div class="character-buttons">
+                <button class="char-btn" onclick="selectCharacter('badaev')">Бадаев</button>
+                <button class="char-btn" onclick="selectCharacter('sheykov')">Шейков</button>
+                <button class="char-btn" onclick="selectCharacter('misha')">Миша</button>
+            </div>
+            <button class="back-btn" onclick="showScreen('soloDifficulty')">Назад</button>
+        </div>
+
+        <!-- Выбор персонажей (мультиплеер) -->
+        <div id="multiCharacter" class="screen">
+            <h2>Выберите персонажей</h2>
+            <p class="hint">Максимум 3 игрока. Нажмите на персонажа, чтобы выбрать.</p>
+            <div class="character-buttons" id="multiCharContainer">
+                <button class="char-btn" onclick="toggleMultiCharacter('badaev')">Бадаев</button>
+                <button class="char-btn" onclick="toggleMultiCharacter('sheykov')">Шейков</button>
+                <button class="char-btn" onclick="toggleMultiCharacter('misha')">Миша</button>
+            </div>
+            <p id="selectedCount">Выбрано: 0</p>
+            <button id="startMultiBtn" onclick="startMultiplayer()" disabled>Начать игру</button>
+            <button class="back-btn" onclick="showScreen('mainMenu')">Назад</button>
+        </div>
+
+        <!-- Игровой экран -->
+        <div id="gameScreen" class="screen">
+            <div class="game-ui">
+                <div class="player-info" id="playerInfo">Игрок: —</div>
+                <div class="turn-indicator" id="turnIndicator">Ход: —</div>
+            </div>
+            <button class="restart-btn" onclick="restartGame()">🔄 Заново</button>
+            <div class="power-bar-container" id="powerBarContainer">
+                <div class="green-zone" id="greenZone"></div>
+                <div class="power-bar" id="powerBar"></div>
+                <div class="power-bar-marker" id="powerBarMarker"></div>
+                <div class="zone-label">🎯 Зелёная зона — идеальная отрыжка!</div>
+            </div>
+            <div class="game-message" id="gameMessage"></div>
+            <div class="fart-display" id="fartDisplay">💨</div>
+        </div>
+    </div>
+
+    <script>
+        // === Аудио ===
+        let audioCtx;
+        let musicGain, fartGain;
+        let musicPlaying = false;
+        let musicVolume = 0.5;
+        let fartVolume = 0.7;
+
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            
+            musicGain = audioCtx.createGain();
+            musicGain.gain.value = musicVolume * 0.3;
+            musicGain.connect(audioCtx.destination);
+
+            fartGain = audioCtx.createGain();
+            fartGain.gain.value = fartVolume;
+            fartGain.connect(audioCtx.destination);
+        }
+
+        function startMenuMusic() {
+            if (!audioCtx || musicPlaying) return;
+            musicPlaying = true;
+            
+            const playNote = (freq, time, duration, vol) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sine';
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0, time);
+                gain.gain.linearRampToValueAtTime(vol, time + 0.1);
+                gain.gain.linearRampToValueAtTime(0, time + duration);
+                osc.connect(gain);
+                gain.connect(musicGain);
+                osc.start(time);
+                osc.stop(time + duration);
+            };
+
+            const melody = [
+                {n: 261.63, t: 0, d: 2},
+                {n: 329.63, t: 2, d: 2},
+                {n: 392.00, t: 4, d: 2},
+                {n: 329.63, t: 6, d: 2},
+                {n: 293.66, t: 8, d: 2},
+                {n: 349.23, t: 10, d: 2},
+                {n: 440.00, t: 12, d: 2},
+                {n: 349.23, t: 14, d: 2},
+                {n: 261.63, t: 16, d: 2},
+                {n: 329.63, t: 18, d: 2},
+                {n: 392.00, t: 20, d: 2},
+                {n: 523.25, t: 22, d: 4},
+            ];
+
+            const loop = () => {
+                if (!musicPlaying) return;
+                const now = audioCtx.currentTime;
+                melody.forEach(note => {
+                    playNote(note.n, now + note.t, note.d, 0.15);
+                });
+                setTimeout(loop, 26000);
+            };
+            loop();
+        }
+
+        // Звук отрыжки — чем мощнее, тем громче и ниже/выше
+        function playFart(power) {
+            if (!audioCtx) return;
+            const now = audioCtx.currentTime;
+            
+            const osc1 = audioCtx.createOscillator();
+            const gain1 = audioCtx.createGain();
+            osc1.type = 'sawtooth';
+            osc1.frequency.setValueAtTime(60 + power * 120, now);
+            osc1.frequency.exponentialRampToValueAtTime(30 + power * 60, now + 0.5);
+            gain1.gain.setValueAtTime(0.5 * (0.3 + power * 0.7), now);
+            gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+            osc1.connect(gain1);
+            gain1.connect(fartGain);
+            osc1.start(now);
+            osc1.stop(now + 0.6);
+
+            const osc2 = audioCtx.createOscillator();
+            const gain2 = audioCtx.createGain();
+            const lfo = audioCtx.createOscillator();
+            const lfoGain = audioCtx.createGain();
+            lfo.frequency.value = 15 + power * 30;
+            lfoGain.gain.value = 20 + power * 40;
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc2.frequency);
+            osc2.type = 'square';
+            osc2.frequency.value = 80 + power * 80;
+            gain2.gain.setValueAtTime(0.3 * (0.3 + power * 0.7), now);
+            gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+            osc2.connect(gain2);
+            gain2.connect(fartGain);
+            lfo.start(now);
+            osc2.start(now);
+            osc2.stop(now + 0.5);
+            lfo.stop(now + 0.5);
+
+            const bufferSize = audioCtx.sampleRate * 0.5;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+            }
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.value = 0.15 * power;
+            const noiseFilter = audioCtx.createBiquadFilter();
+            noiseFilter.type = 'lowpass';
+            noiseFilter.frequency.value = 200 + power * 400;
+            noise.connect(noiseFilter);
+            noiseFilter.connect(noiseGain);
+            noiseGain.connect(fartGain);
+            noise.start(now);
+        }
+
+        // === Игровые состояния ===
+        let currentScreen = 'mainMenu';
+        let gameMode = null;
+        let difficulty = 'easy';
+        let selectedChar = null;
+        let selectedMultiChars = [];
+        let gameState = null;
+
+        // ВАЖНО: ключ 'sheykov', имя 'Шейков'
+        const CHARACTERS = {
+            badaev: { name: 'Бадаев', color: '#ff6b6b', emoji: '😎' },
+            sheykov: { name: 'Шейков', color: '#4ecdc4', emoji: '🤪' },
+            misha: { name: 'Миша', color: '#ffe66d', emoji: '🐻' }
+        };
+
+        // === Навигация ===
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            currentScreen = screenId;
+        }
+
+        function selectDifficulty(diff) {
+            difficulty = diff;
+            showScreen('soloCharacter');
+        }
+
+        function selectCharacter(char) {
+            selectedChar = char;
+            startSoloGame();
+        }
+
+        function toggleMultiCharacter(char) {
+            const idx = selectedMultiChars.indexOf(char);
+            if (idx > -1) {
+                selectedMultiChars.splice(idx, 1);
+            } else if (selectedMultiChars.length < 3) {
+                selectedMultiChars.push(char);
+            }
+            updateMultiSelection();
+        }
+
+        function updateMultiSelection() {
+            document.querySelectorAll('#multiCharContainer .char-btn').forEach((btn, i) => {
+                const char = ['badaev', 'sheykov', 'misha'][i];
+                btn.classList.toggle('selected', selectedMultiChars.includes(char));
+            });
+            document.getElementById('selectedCount').textContent = 
+                `Выбрано: ${selectedMultiChars.length} (макс. 3)`;
+            document.getElementById('startMultiBtn').disabled = selectedMultiChars.length === 0;
+        }
+
+        function startMultiplayer() {
+            if (selectedMultiChars.length === 0) return;
+            gameMode = 'multi';
+            startGame(selectedMultiChars);
+        }
+
+        function startSoloGame() {
+            gameMode = 'solo';
+            startGame([selectedChar]);
+        }
+
+        // === Игровая логика ===
+        function startGame(characters) {
+            showScreen('gameScreen');
+            
+            const playerNames = characters.map(c => CHARACTERS[c].name);
+            
+            gameState = {
+                characters: characters,
+                playerNames: playerNames,
+                currentPlayer: 0,
+                scores: characters.map(() => 0),
+                round: 1,
+                maxRounds: 5,
+                power: 0,
+                powerDirection: 1,
+                animating: false,
+                waitingForInput: true
+            };
+
+            updateGreenZone();
+            updateUI();
+            startPowerAnimation();
+        }
+
+        function updateUI() {
+            const gs = gameState;
+            if (!gs) return;
+            const currentChar = gs.characters[gs.currentPlayer];
+            const currentName = CHARACTERS[currentChar].name;
+            
+            let infoText = gs.playerNames.map((n, i) => 
+                `${CHARACTERS[gs.characters[i]].emoji} ${n}: ${gs.scores[i]}`
+            ).join(' | ');
+            
+            document.getElementById('playerInfo').textContent = infoText;
+            document.getElementById('turnIndicator').textContent = 
+                `Ход: ${CHARACTERS[currentChar].emoji} ${currentName} | Раунд ${gs.round}/${gs.maxRounds}`;
+        }
+
+        function startPowerAnimation() {
+            const gs = gameState;
+            if (!gs || !gs.waitingForInput) return;
+            
+            const bar = document.getElementById('powerBar');
+            const marker = document.getElementById('powerBarMarker');
+            
+            function animate() {
+                if (!gameState || !gameState.waitingForInput || !gameState.animating) return;
+                
+                gameState.power += gameState.powerDirection * (1.5 + Math.random() * 1.5);
+                
+                if (gameState.power >= 100) {
+                    gameState.power = 100;
+                    gameState.powerDirection = -1;
+                } else if (gameState.power <= 0) {
+                    gameState.power = 0;
+                    gameState.powerDirection = 1;
+                }
+                
+                bar.style.width = gameState.power + '%';
+                marker.style.left = gameState.power + '%';
+                
+                requestAnimationFrame(animate);
+            }
+            
+            gameState.animating = true;
+            animate();
+        }
+
+        function stopPowerAnimation() {
+            if (gameState) {
+                gameState.animating = false;
+            }
+        }
+
+        function getGreenZone() {
+            const zones = {
+                easy: { start: 40, end: 60 },
+                medium: { start: 55, end: 70 },
+                hard: { start: 65, end: 75 }
+            };
+            return zones[difficulty] || zones.easy;
+        }
+
+        function updateGreenZone() {
+            const zone = getGreenZone();
+            const greenZoneEl = document.getElementById('greenZone');
+            greenZoneEl.style.left = zone.start + '%';
+            greenZoneEl.style.width = (zone.end - zone.start) + '%';
+        }
+
+        function handlePlayerAction() {
+            const gs = gameState;
+            if (!gs || !gs.waitingForInput) return;
+            
+            gs.waitingForInput = false;
+            stopPowerAnimation();
+            
+            const power = gs.power;
+            const zone = getGreenZone();
+            const inGreen = power >= zone.start && power <= zone.end;
+            
+            let fartPower;
+            if (inGreen) {
+                fartPower = 1.0;
+                gs.scores[gs.currentPlayer] += 3;
+            } else if (power > zone.end) {
+                fartPower = 0.5 + (power - zone.end) / 100;
+                gs.scores[gs.currentPlayer] += 1;
+            } else {
+                fartPower = 0.3 + power / 100;
+                gs.scores[gs.currentPlayer] += 1;
+            }
+            
+            playFart(Math.min(1, fartPower));
+            
+            const message = inGreen 
+                ? `💨 ИДЕАЛЬНАЯ ОТРЫЖКА! +3 очка` 
+                : `💨 Отрыжка... +1 очко`;
+            showGameMessage(message);
+            showFartDisplay(fartPower);
+            
+            updateUI();
+            
+            setTimeout(() => nextTurn(), 1500);
+        }
+
+        function showGameMessage(text) {
+            const msg = document.getElementById('gameMessage');
+            msg.textContent = text;
+            msg.classList.add('show');
+            setTimeout(() => msg.classList.remove('show'), 1500);
+        }
+
+        function showFartDisplay(power) {
+            const fd = document.getElementById('fartDisplay');
+            fd.textContent = power > 0.8 ? '💨💨💨' : power > 0.5 ? '💨💨' : '💨';
+            fd.style.fontSize = (4 + power * 8) + 'rem';
+            fd.classList.add('show');
+            setTimeout(() => fd.classList.remove('show'), 1000);
+        }
+
+        function nextTurn() {
+            const gs = gameState;
+            if (!gs) return;
+            
+            gs.currentPlayer++;
+            
+            if (gs.currentPlayer >= gs.characters.length) {
+                gs.currentPlayer = 0;
+                gs.round++;
+                
+                if (gs.round > gs.maxRounds) {
+                    endGame();
+                    return;
+                }
+            }
+            
+            updateUI();
+            updateGreenZone();
+            
+            if (gameMode === 'solo' && gs.currentPlayer === 1) {
+                gs.waitingForInput = false;
+                setTimeout(() => robotTurn(), 1000);
+            } else {
+                gs.waitingForInput = true;
+                gs.power = 0;
+                gs.powerDirection = 1;
+                startPowerAnimation();
+            }
+        }
+
+        function robotTurn() {
+            const gs = gameState;
+            if (!gs) return;
+            
+            const accuracy = {
+                easy: 0.3,
+                medium: 0.6,
+                hard: 0.9
+            };
+            
+            const zone = getGreenZone();
+            const zoneCenter = (zone.start + zone.end) / 2;
+            const zoneWidth = zone.end - zone.start;
+            
+            let robotPower;
+            if (Math.random() < accuracy[difficulty]) {
+                robotPower = zoneCenter + (Math.random() - 0.5) * zoneWidth * 0.8;
+            } else {
+                robotPower = Math.random() * 100;
+                while (robotPower >= zone.start && robotPower <= zone.end) {
+                    robotPower = Math.random() * 100;
+                }
+            }
+            
+            gs.waitingForInput = false;
+            gs.animating = true;
+            
+            const bar = document.getElementById('powerBar');
+            const marker = document.getElementById('powerBarMarker');
+            const startPower = gs.power;
+            const startTime = performance.now();
+            const duration = 800;
+            
+            function animateRobot(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(1, elapsed / duration);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                const currentPower = startPower + (robotPower - startPower) * eased;
+                
+                bar.style.width = currentPower + '%';
+                marker.style.left = currentPower + '%';
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateRobot);
+                } else {
+                    gs.power = robotPower;
+                    gs.animating = false;
+                    
+                    const inGreen = robotPower >= zone.start && robotPower <= zone.end;
+                    let fartPower;
+                    if (inGreen) {
+                        fartPower = 1.0;
+                        gs.scores[gs.currentPlayer] += 3;
+                    } else {
+                        fartPower = 0.3 + robotPower / 200;
+                        gs.scores[gs.currentPlayer] += 1;
+                    }
+                    
+                    playFart(Math.min(1, fartPower));
+                    
+                    const message = inGreen 
+                        ? `🤖 Робот: ИДЕАЛЬНАЯ ОТРЫЖКА! +3` 
+                        : `🤖 Робот: Отрыжка... +1`;
+                    showGameMessage(message);
+                    showFartDisplay(fartPower);
+                    
+                    updateUI();
+                    
+                    setTimeout(() => nextTurn(), 1500);
+                }
+            }
+            
+            requestAnimationFrame(animateRobot);
+        }
+
+        function endGame() {
+            const gs = gameState;
+            if (!gs) return;
+            
+            stopPowerAnimation();
+            
+            let winnerIdx = 0;
+            let maxScore = -1;
+            gs.scores.forEach((s, i) => {
+                if (s > maxScore) {
+                    maxScore = s;
+                    winnerIdx = i;
+                }
+            });
+            
+            const winnerName = gs.playerNames[winnerIdx];
+            const winnerChar = CHARACTERS[gs.characters[winnerIdx]];
+            
+            showGameMessage(`🏆 Победитель: ${winnerChar.emoji} ${winnerName}! (${maxScore} очков)`);
+            
+            setTimeout(() => {
+                showScreen('mainMenu');
+                gameState = null;
+            }, 3000);
+        }
+
+        function restartGame() {
+            if (gameMode === 'solo') {
+                startSoloGame();
+            } else {
+                startMultiplayer();
+            }
+        }
+
+        // === Управление ===
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (currentScreen === 'gameScreen' && gameState && gameState.waitingForInput) {
+                    handlePlayerAction();
+                }
+            }
+        });
+
+        document.getElementById('powerBarContainer').addEventListener('click', () => {
+            if (currentScreen === 'gameScreen' && gameState && gameState.waitingForInput) {
+                handlePlayerAction();
+            }
+        });
+
+        // === Настройки ===
+        document.getElementById('musicVolume').addEventListener('input', (e) => {
+            musicVolume = e.target.value / 100;
+            document.getElementById('musicVolValue').textContent = e.target.value + '%';
+            if (musicGain) musicGain.gain.value = musicVolume * 0.3;
+        });
+
+        document.getElementById('fartVolume').addEventListener('input', (e) => {
+            fartVolume = e.target.value / 100;
+            document.getElementById('fartVolValue').textContent = e.target.value + '%';
+            if (fartGain) fartGain.gain.value = fartVolume;
+        });
+
+        // === Инициализация ===
+        window.addEventListener('load', () => {
+            const initOnClick = () => {
+                initAudio();
+                startMenuMusic();
+                document.removeEventListener('click', initOnClick);
+                document.removeEventListener('keydown', initOnClick);
+            };
+            document.addEventListener('click', initOnClick);
+            document.addEventListener('keydown', initOnClick);
+            
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+            resize();
+            window.addEventListener('resize', resize);
+            
+            const particles = [];
+            for (let i = 0; i < 50; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height,
+                    r: Math.random() * 3 + 1,
+                    speed: Math.random() * 0.5 + 0.1,
+                    alpha: Math.random() * 0.5 + 0.1
+                });
+            }
+            
+            function drawParticles() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#0f2027');
+                gradient.addColorStop(0.5, '#203a43');
+                gradient.addColorStop(1, '#2c5364');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                particles.forEach(p => {
+                    p.y -= p.speed;
+                    if (p.y < -10) {
+                        p.y = canvas.height + 10;
+                        p.x = Math.random() * canvas.width;
+                    }
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(255, 220, 150, ${p.alpha})`;
+                    ctx.fill();
+                });
+                
+                requestAnimationFrame(drawParticles);
+            }
+            drawParticles();
+        });
+    </script>
+</body>
+</html>
